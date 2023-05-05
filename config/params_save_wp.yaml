@@ -1,0 +1,4 @@
+save_waypoints_node:
+  ros__parameters:
+    file_name: "physical3.csv"
+    path_to_folder: "/home/aadit/ESE615/f1tenth_ws/src/lab5/pure_pursuit/waypoints/"
