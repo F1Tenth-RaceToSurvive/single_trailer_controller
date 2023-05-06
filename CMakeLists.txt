@@ -27,6 +27,7 @@ foreach(PACKAGE
   Eigen3
   tf2_ros
   tf2_geometry_msgs
+  serial_driver
   )
 
   find_package(${PACKAGE} REQUIRED)
@@ -43,6 +44,7 @@ include_directories(
 # Create Cpp executable
 add_executable(pure_pursuit_node src/pure_pursuit_node.cpp)
 add_executable(save_waypoints_node src/save_waypoints.cpp)
+add_executable(serial_encoder_bridge_node src/serial_encoder_bridge.cpp)
 
 ament_target_dependencies(pure_pursuit_node 
   rclcpp geometry_msgs ackermann_msgs nav_msgs sensor_msgs std_msgs visualization_msgs tf2_ros tf2_geometry_msgs
@@ -52,10 +54,15 @@ ament_target_dependencies(save_waypoints_node
   rclcpp geometry_msgs tf2_ros
 )
 
+ament_target_dependencies(serial_encoder_bridge_node 
+  rclcpp std_msgs serial_driver
+)
+
 # Install Cpp executables
 install(TARGETS
   pure_pursuit_node
   save_waypoints_node
+  serial_encoder_bridge_node
   DESTINATION lib/${PROJECT_NAME})
 
 # Install Python modules
