@@ -5,8 +5,8 @@ import numpy as np
 import csv
 import math
 
-file_name = "wu_chen_straight_line"
-folder_path = "/home/aadit/ESE615/f1tenth_ws/src/project/waypoints/"
+file_name = "wu_chen_obs_1"
+folder_path = "/home/aadith/Desktop/f1_tenth/workspace/src/project/waypoints/"
 
 def save_as_csv(x,y, fname):
     with open(fname, 'w') as csvfile:
@@ -28,14 +28,14 @@ with open(folder_path + file_name + ".csv") as csvfile:
     for row in reader:
         x.append(float(row[0]))
         y.append(float(row[1]))
-    x.append(x[0]);
-    y.append(y[0]);
+    # x.append(x[0]);
+    # y.append(y[0]);
 axes = np.linspace(1,len(x), len(x));
 k = 1
 splx = InterpolatedUnivariateSpline(axes, x, k = k)
 sply = InterpolatedUnivariateSpline(axes, y, k = k)
 
-sampling_density = 3;
+sampling_density = 10;
 axes_sampling = np.linspace(1,len(x), sampling_density*len(x));
 
 save_as_csv(splx(axes_sampling), sply(axes_sampling), folder_path+file_name+"_spline_"+str(sampling_density)+".csv")
