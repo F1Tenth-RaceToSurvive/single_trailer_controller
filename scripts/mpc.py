@@ -30,21 +30,22 @@ class Car(object):
 
 		#Load a csv with x and y coordinates of the trailer path
 		self.desired_trailer_path = np.loadtxt('/home/aadith/Desktop/f1_tenth/workspace/src/project/waypoints/wu_chen_straight_line_spline_3.csv', delimiter=',')
-
+		print(self.desired_trailer_path)
 		self.nx = 4 # xc, yc , yawc, hitch
 		self.nu = 2 # v, steering angle
-		self.dt = 0.1 # time step
+		self.dt = 0.2 # time step
 		self.N = self.desired_trailer_path.shape[0]; # horizon length
 
 		self.Q = np.diag([1,1,1,1]);
 		self.R = np.diag([0,1]);
 
 		# TODO :: Fill values
-		self.L_car = -1;
-		self.L_trailer = -1;
-		self.ego_to_hitch = -1;
+		self.L_car = 0.5;
+		self.L_trailer = 0.4;
+		self.ego_to_hitch = 0.5;
 		steering_angle_limit = 22;  # In degrees
 		self.hitch_limit = 60;  # In degrees
+		self.tracking_gain = 5;
 
 		self.umax = np.array([4, steering_angle_limit*math.pi/180]);
 		self.umin = np.array([0, -steering_angle_limit*math.pi/180]);
@@ -107,8 +108,10 @@ class Car(object):
 				t = np.array([[tx_car], [ty_car], [1]]);
 				t_w = np.matmul(T, t);
 				t_w = t_w.flatten()[:2];
-				cost += np.linalg.norm(t_w  - self.desired_trailer_path[i,:2])**2;
-			
+				
+				cost = cost + np.linalg.norm(t_w  - self.desired_trailer_path[i,:2])**2;
+				cost = self.tracking_gain * cost;
+		
 			return cost
 
 	def add_tracking_cost(self, x):
@@ -151,10 +154,12 @@ class Car(object):
 
 	def compute_mpc_feedback(self):
 			
+			print("Computing MPC")
+			
 			#Inital pose of the car is at the start and trailer is straight
 			x0 = np.zeros((self.nx,))
-			x0[0] = self.desired_trailer_path[0,0];
-			x0[1] = self.desired_trailer_path[0,1];
+			x0[0] = self.desired_trailer_path[0,0] ;
+			x0[1] = self.desired_trailer_path[0,1] ;
 			x0[2] = self.desired_trailer_path[0,2];
 			x0[3] = 0;
 
@@ -167,7 +172,7 @@ class Car(object):
 				u[i] = self.prog.NewContinuousVariables(self.nu, "u_" + str(i))
 
 			# TODO :: Add Initial state constraint
-			self.add_initial_state_constraint(x[0], x0);
+			# self.add_initial_state_constraint(x[0], x0);
 
 			# TODO :: Add saturation constraints
 			self.add_input_constraints(u);
@@ -176,7 +181,7 @@ class Car(object):
 			self.add_dynamic_constraints(x,u);
 
 			# TODO :: Add obstacle constraints
-			self.add_obstacle_constraints(x);
+			# self.add_obstacle_constraints(x);
 
 			# TODO :: Add objective function
 			self.add_tracking_cost(x);
@@ -185,10 +190,16 @@ class Car(object):
 			solver = SnoptSolver();
 			result = solver.Solve(self.prog);
 			x_result = result.GetSolution(x);	
-			print(x_result)
+			# print(x_result)
+			# print(result.GetSolution(u))
 
 
-
+			#plot the trajectory
+			traj = np.array(x_result[:,:2]);
+			plt.plot(traj[:,0],traj[:,1],"--x" , label = "car path");
+			plt.plot(self.desired_trailer_path[:13,0], self.desired_trailer_path[:13,1], "--o",label = "desired path");	
+			plt.legend();
+			plt.show();
 
 
 
