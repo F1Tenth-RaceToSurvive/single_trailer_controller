@@ -3,15 +3,23 @@ import pdb
 import matplotlib.pyplot as plt
 import numpy as np
 import csv
+import math
 
-file_name = "physical3"
-folder_path = "/home/orlando21/f1tenth_ws/src/single_trailer_controller/waypoints/"
+file_name = "wu_chen_straight_line"
+folder_path = "/home/aadit/ESE615/f1tenth_ws/src/project/waypoints/"
 
 def save_as_csv(x,y, fname):
     with open(fname, 'w') as csvfile:
         writer = csv.writer(csvfile, delimiter=',')
+        v = [2]*len(x);
+        yaw = []
+        for i in range(1,len(x)):
+            yaw += [math.atan2(y[i] - y[i-1], x[i] - x[i-1])];
+        yaw += [math.atan2(y[0] - y[-1], x[0] - x[-1])];
+
+
         for i in range(len(x)):
-            writer.writerow([x[i], y[i]])
+            writer.writerow([x[i], y[i], v[i], yaw[i]])
 
 with open(folder_path + file_name + ".csv") as csvfile:
     reader = csv.reader(csvfile, delimiter=',')
@@ -20,19 +28,17 @@ with open(folder_path + file_name + ".csv") as csvfile:
     for row in reader:
         x.append(float(row[0]))
         y.append(float(row[1]))
-
+    x.append(x[0]);
+    y.append(y[0]);
 axes = np.linspace(1,len(x), len(x));
-k = 3
+k = 1
 splx = InterpolatedUnivariateSpline(axes, x, k = k)
 sply = InterpolatedUnivariateSpline(axes, y, k = k)
 
-#plt.plot(x, y, 'ro', ms=5)
-# plt.plot(splx(axes), sply(axes), 'go', lw=3, alpha=0.7)
-# plt.show()
+sampling_density = 3;
+axes_sampling = np.linspace(1,len(x), sampling_density*len(x));
 
-axes_sampling = np.linspace(1,len(x), 3*len(x));
-
-save_as_csv(splx(axes_sampling), sply(axes_sampling), folder_path+file_name+"_spline.csv")
+save_as_csv(splx(axes_sampling), sply(axes_sampling), folder_path+file_name+"_spline_"+str(sampling_density)+".csv")
 
 
 
