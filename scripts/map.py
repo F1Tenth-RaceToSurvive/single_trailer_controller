@@ -1,6 +1,7 @@
 import yaml
 import numpy as np
 import cv2
+import pdb
 
 class Map(object):
 
@@ -47,6 +48,7 @@ class Map(object):
 		x_world = xi[0]
 		y_world = xi[1]
 		x_pix, y_pix = self.world_to_pixel(x_world, y_world)
+
 		if self.map[x_pix, y_pix] == 1:
 			return True
 		else:
