@@ -17,9 +17,10 @@ from pydrake.solvers.snopt import SnoptSolver
 from pydrake.solvers.mathematicalprogram import MathematicalProgram, Solve
 import pydrake.symbolic as sym
 
+from map import *
 
 class Car(object):
-	def __init__(self):
+	def __init__(self, file = "/home/aadith/Desktop/f1_tenth/workspace/src/project/maps/wu_chen_map1"):
 
 		self.nx = 4 # xc, yc , yawc, hitch
 		self.nu = 2 # v, steering angle
@@ -39,6 +40,8 @@ class Car(object):
 
 		self.umax = np.array([4, steering_angle_limit*math.pi/180]);
 		self.umin = np.array([0, -steering_angle_limit*math.pi/180]);
+	
+		self.world = Map(file);
 
 	# Write the continuous dynamics of the car system with single trailer here - on axle trailer from common road vehicles source
 	def continuous_time_full_dynamics(self, x, u):
@@ -63,37 +66,6 @@ class Car(object):
 		x_new[3] = x[3] + f[3]*self.dt;
 
 		return x_new;
-
-	def compute_mpc_feedback(self):
-		prog = MathematicalProgram()
-		
-		#Initialize the decision variables
-		x = np.zeros((self.N, self.nx), dtype="object")
-		for i in range(self.N):
-			x[i] = prog.NewContinuousVariables(self.nx, "x_" + str(i))
-		u = np.zeros((self.N-1, self.nu), dtype="object")
-		for i in range(self.N-1):
-			u[i] = prog.NewContinuousVariables(self.nu, "u_" + str(i))
-
-		# TODO :: Add Initial state constraint
-
-		# TODO :: Add saturation constraints
-		self.add_input_constraints(u);
-		self.add_state_constraints(x);
-		# TODO :: Add dynamics constraints
-		self.add_dynamic_constraints(x,u);
-
-		# TODO :: Add obstacle constraints
-		self.add_obstacle_constraints(x);
-
-		# TODO :: Add objective function
-		self.add_tracking_cost(x, target_pos);
-		self.add_actuation_cost(u);
-
-		solver = SnoptSolver();
-		result = solver.Solve(prog);
-		u_mpc = result.GetSolution(u)[0];
-
 
 	def add_initial_state_constraint(self,x,x0):
 		self.prog.AddBoundingBoxConstraint(x0,x0,x[0]);
@@ -160,13 +132,45 @@ class Car(object):
 	def check_collisions(self, x):
 		collision_states = np.zeros((self.N,))
 		for i,xi in enumerate(x):
-			if self.is_collided(xi,i):		#Takes times-step i, and state i and checks if has collided or not				return;
+			if self.world.is_collided(xi):		#Takes times-step i, and state i and checks if has collided or not				return;
 				collision_states[i] = 1;
 		return collision_states
 
 	def add_actuation_cost(self, u):
 		for ui in u:
 			self.prog.AddQuadraticCost(ui @ self.R@ ui.T);
+
+	def compute_mpc_feedback(self):
+			prog = MathematicalProgram()
+			
+			#Initialize the decision variables
+			x = np.zeros((self.N, self.nx), dtype="object")
+			for i in range(self.N):
+				x[i] = prog.NewContinuousVariables(self.nx, "x_" + str(i))
+			u = np.zeros((self.N-1, self.nu), dtype="object")
+			for i in range(self.N-1):
+				u[i] = prog.NewContinuousVariables(self.nu, "u_" + str(i))
+
+			# TODO :: Add Initial state constraint
+
+			# TODO :: Add saturation constraints
+			self.add_input_constraints(u);
+			self.add_state_constraints(x);
+			# TODO :: Add dynamics constraints
+			self.add_dynamic_constraints(x,u);
+
+			# TODO :: Add obstacle constraints
+			self.add_obstacle_constraints(x);
+
+			# TODO :: Add objective function
+			self.add_tracking_cost(x, target_pos);
+			self.add_actuation_cost(u);
+
+			solver = SnoptSolver();
+			result = solver.Solve(prog);
+			u_mpc = result.GetSolution(u)[0];	
+
+
 
 
 
@@ -182,16 +186,16 @@ class Car(object):
 
 car = Car();
 
-x0 = np.array([0,0,0,0]);
-u0 = np.array([1,0.1]);
+# x0 = np.array([0,0,0,0]);
+# u0 = np.array([1,0.1]);
 
-traj = [];
-for i in range(0,100):
-	traj += [x0];
-	x0 = car.take_dynamics_step(x0,u0,0.1);
-	print(x0);
+# traj = [];
+# for i in range(0,100):
+# 	traj += [x0];
+# 	x0 = car.take_dynamics_step(x0,u0,0.1);
+# 	print(x0);
 
-#plot the trajectory
-traj = np.array(traj);
-plt.plot(traj[:,0],traj[:,1]);
-plt.show();
+# #plot the trajectory
+# traj = np.array(traj);
+# plt.plot(traj[:,0],traj[:,1]);
+# plt.show();
