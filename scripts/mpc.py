@@ -17,7 +17,7 @@ from pydrake.solvers.snopt import SnoptSolver
 from pydrake.solvers.mathematicalprogram import MathematicalProgram, Solve
 import pydrake.symbolic as sym
 from pydrake.autodiffutils import AutoDiffXd
-
+from matplotlib.animation import FuncAnimation
 import pdb
 # sudo apt-get install python3-tk
 
@@ -49,7 +49,7 @@ class Car(object):
 		self.hitch_limit = 60;  # In degrees
 		self.tracking_gain = 1; #The relative gains btween each tracking point
 
-		self.acc_cost_gain = 1; #The weight of acceleration cost
+		self.acc_cost_gain = 0.5; #The weight of acceleration cost
 		self.tracking_cost_gain = 1;#The weight of tracking cost term as a whole
 
 
@@ -233,26 +233,35 @@ class Car(object):
 		print("MPC solution complete!")
 		x_result = result.GetSolution(x);	
 		# print(x_result)
-		# print(result.GetSolution(u))
+		print(result.GetSolution(u))
 
 		trailer_traj = []
 		for i in range(self.N):
 			x_car = x_result[i,:]
 			x_trailer = self.get_trailer_position_from_car_state(x_car);
 			trailer_traj += [x_trailer];
-		trailer_traj = np.array(trailer_traj);
-
 		
-		#plot the trajectory
-		#set the axis to be the same for both the axis
-		plt.axis('equal');
-		car_traj = np.array(x_result[:,:2]);
-		plt.plot(car_traj[:,0],car_traj[:,1],"--x" , label = "car path mpc");
-		plt.plot(self.desired_trailer_path[:,0], self.desired_trailer_path[:,1], "b--o",label = "desired path");	
-		plt.plot(trailer_traj[:,0], trailer_traj[:,1], "r--o",label = "trailer path mpc");
-		plt.legend();
-		plt.show();
 
+		self.trailer_traj = np.array(trailer_traj);
+		self.car_traj = np.array(x_result[:,:2]);
+
+		# Plot the trajectory
+		fig, ax = plt.subplots()
+
+		def animate(i):
+			ax.axis('equal');
+			ax.plot(self.desired_trailer_path[:,0], self.desired_trailer_path[:,1], "b--o",label = "desired path");	
+			ax.plot(self.car_traj[i,0], self.car_traj[i,1],"--x" , label = "car path mpc");
+			ax.plot(self.trailer_traj[i,0], self.trailer_traj[i,1], "r--o",label = "trailer path mpc");
+			# Plot a the hitch
+			ax.plot([self.car_traj[i,0], self.trailer_traj[i, 0]],
+					[self.car_traj[i, 1], self.trailer_traj[i, 1]])
+
+		# Call the animation
+		ani = FuncAnimation(fig, animate, frames=self.N, interval=200, repeat=True)
+
+		# Show the plot
+		plt.show()
 
 
 
@@ -263,8 +272,8 @@ class Car(object):
 
 ################### Testing #######################
 
-file = "/home/aadith/Desktop/f1_tenth/workspace/src/project/maps/wu_chen_map1_obs"
-# file = "/home/aadith/Desktop/f1_tenth/workspace/src/project/maps/wu_chen_map1"
+# file = "/home/aadith/Desktop/f1_tenth/workspace/src/project/maps/wu_chen_map1_obs"
+file = "/home/aadith/Desktop/f1_tenth/workspace/src/project/maps/wu_chen_map1"
 car = Car(file);
 # pdb.set_trace()
 
