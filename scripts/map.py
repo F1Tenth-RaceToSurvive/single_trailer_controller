@@ -2,7 +2,6 @@ import yaml
 import numpy as np
 import cv2
 import pdb
-import seaborn as sns
 
 class Map(object):
 
@@ -35,8 +34,10 @@ class Map(object):
 	# functiion to convert the pixel coordinate to world coordinate using resolution and origin
 	def pixel_to_world(self,x_pix, y_pix):
 
-		x_world = x_pix * self.res + self.origin[0]
-		y_world = y_pix * self.res + self.origin[1]
+		converted_x_pix = y_pix
+		converted_y_pix = self.map.shape[0] - 1 - x_pix
+		x_world = converted_x_pix * self.res + self.origin[0]
+		y_world = converted_y_pix * self.res + self.origin[1]
 		return x_world, y_world
 
 	## function to convert the world coordinate to pixel coordinate using resolution and origin

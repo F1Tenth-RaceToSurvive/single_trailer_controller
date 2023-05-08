@@ -57,6 +57,15 @@ class Car(object):
 	
 		self.map_min = np.array([-3.9, -4.8])
 		self.map_max = np.array([4.5, 4.2])
+
+		self.occupied_pixels = []
+		for row in range(self.world.map.shape[0]):
+			for col in range(self.world.map.shape[1]):
+				if self.world.map[row, col] == 0:
+					x_world, y_world = self.world.pixel_to_world(row, col)
+					self.occupied_pixels.append([x_world, y_world])
+		self.occupied_pixels = np.asarray(self.occupied_pixels)
+		
 	# function for continuous dynamics of the car system with single trailer here
 	def continuous_time_full_dynamics(self, x, u):
 		# states: xc, yc, yawc, hitch
@@ -289,16 +298,21 @@ class Car(object):
 		np.savetxt("/home/aadith/Desktop/f1_tenth/workspace/src/project/mpc_paths/" + result_file_name, self.car_traj, delimiter=",")
 
 		# Plot the trajectory
-		fig, ax = plt.subplots()
+		fig, ax = plt.subplots(figsize=(10, 10))
 
 		def animate(i):
-			ax.axis('equal');
-			ax.plot(self.desired_trailer_path[:,0], self.desired_trailer_path[:,1], "b--o",label = "desired path");	
+			# set the range of x axis and y axis
+			ax.set_xlim(-5, 5)
+			ax.set_ylim(-5, 5)
+			ax.axis('equal')
+			ax.plot(self.desired_trailer_path[:,0], self.desired_trailer_path[:,1], "b--o",label = "desired path", markersize=2);	
 			ax.plot(self.car_traj[i,0], self.car_traj[i,1],"--x" , label = "car path mpc");
 			ax.plot(self.trailer_traj[i,0], self.trailer_traj[i,1], "r--o",label = "trailer path mpc");
 			# Plot a the hitch
 			ax.plot([self.car_traj[i,0], self.trailer_traj[i, 0]],
 					[self.car_traj[i, 1], self.trailer_traj[i, 1]])
+			# Plot obstacles
+			ax.scatter(self.occupied_pixels[:,0], self.occupied_pixels[:, 1], marker=',', color="black", label="obstacles", s=5)
 
 		# Call the animation
 		ani = FuncAnimation(fig, animate, frames=self.N, interval=200, repeat=True)
