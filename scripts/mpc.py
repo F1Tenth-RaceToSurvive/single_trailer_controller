@@ -30,7 +30,7 @@ class Car(object):
 		self.world = Map(file);
 
 		#Load a csv with x and y coordinates of the trailer path
-		self.desired_trailer_path = np.loadtxt('../waypoints/wu_chen_2_obs1_spline_10.csv', delimiter=',')
+		self.desired_trailer_path = np.loadtxt('../waypoints/wu_chen_2_obs2_spline_10.csv', delimiter=',')
 		# self.desired_trailer_path = np.loadtxt('/home/aadith/Desktop/f1_tenth/workspace/src/project/waypoints/wu_chen_single_curve.csv', delimiter=',')
 		self.nx = 4 # xc, yc , yawc, hitch
 		self.nu = 2 # v, steering angle
@@ -48,7 +48,7 @@ class Car(object):
 		self.tracking_gain = 1 #0.9; #The relative gains btween each tracking point
 
 		self.acc_cost_gain = 1; #The weight of acceleration cost
-		self.tracking_cost_gain = 5;#The weight of tracking cost term as a whole
+		self.tracking_cost_gain = 15;#The weight of tracking cost term as a whole
 		self.final_tracking_gain = 15; # final tracking cost gain for the final position of the trailer
 
 		# TODO: Constriants limits for the inputs and variables
@@ -301,7 +301,7 @@ class Car(object):
 			print(self.world.is_collided(x))
 
 		#Save car traj as a csv file
-		result_file_name = "mpc_wu_chen_2_obs1.csv"
+		result_file_name = "mpc_wu_chen_2_obs2.csv"
 		np.savetxt("/home/aadith/Desktop/f1_tenth/workspace/src/project/mpc_paths/" + result_file_name, self.car_traj, delimiter=",")
 		# np.savetxt("/home/aadith/Desktop/f1_tenth/workspace/src/project/mpc_paths/trailer_" + result_file_name, self.trailer_traj, delimiter=",")
 
@@ -340,7 +340,7 @@ class Car(object):
 
 ################### Testing #######################
 
-file = "../maps/wu_chen_map2_obs1"
+file = "../maps/wu_chen_map2_obs2"
 # file = "/home/aadith/Desktop/f1_tenth/workspace/src/project/maps/wu_chen_map1"
 car = Car(file);
 car.compute_mpc_feedback();
