@@ -19,8 +19,6 @@ import pydrake.symbolic as sym
 from pydrake.autodiffutils import AutoDiffXd
 from matplotlib.animation import FuncAnimation
 import pdb
-# sudo apt-get install python3-tk
-
 
 from map import *
 
@@ -33,45 +31,46 @@ class Car(object):
 		#Load a csv with x and y coordinates of the trailer path
 		self.desired_trailer_path = np.loadtxt('/home/aadith/Desktop/f1_tenth/workspace/src/project/waypoints/wu_chen_obs2_spline_10.csv', delimiter=',')
 		# self.desired_trailer_path = np.loadtxt('/home/aadith/Desktop/f1_tenth/workspace/src/project/waypoints/wu_chen_single_curve.csv', delimiter=',')
-		# print(self.desired_trailer_path)
 		self.nx = 4 # xc, yc , yawc, hitch
 		self.nu = 2 # v, steering angle
-		self.N = self.desired_trailer_path.shape[0]; # horizon length
+		self.N = 50; # horizon length
 
 		self.Q = np.diag([10,10,0,0]);
 		self.R = np.diag([0,0.1]);
 
-		# TODO :: Fill values
+		# TODO: Parameters for the car-trailer system
 		self.L_trailer = 0.44;
 		self.ego_to_hitch = 0.48;
 		steering_angle_limit = 22;  # In degrees
 		self.hitch_limit = 60;  # In degrees
-		self.tracking_gain = 0.9; #The relative gains btween each tracking point
+
+		self.tracking_gain = 2 #0.9; #The relative gains btween each tracking point
+
 		self.acc_cost_gain = 1; #The weight of acceleration cost
 		self.tracking_cost_gain = 1;#The weight of tracking cost term as a whole
+		self.final_tracking_gain = 1000; # final tracking cost gain for the final position of the trailer
 
-
+		# TODO: Constriants limits for the inputs and variables
 		self.umax = np.array([4, steering_angle_limit*math.pi/180]);
-		self.umin = np.array([0, -steering_angle_limit*math.pi/180]);
-	
+		self.umin = np.array([2, -steering_angle_limit*math.pi/180]);
 		self.dt_limits = np.array([0.05, 1]); # The limits of the time step
 	
-		
-	# Write the continuous dynamics of the car system with single trailer here - on axle trailer from common road vehicles source
+		self.map_min = np.array([-3.9, -4.8])
+		self.map_max = np.array([4.5, 4.2])
+	# function for continuous dynamics of the car system with single trailer here
 	def continuous_time_full_dynamics(self, x, u):
-		# xc, yc, yawc, hitch
+		# states: xc, yc, yawc, hitch
 		xdot = u[0] *np.cos(x[2])
 		ydot = u[0]*np.sin(x[2])
-		# TODO :: Fill values -> check if correct it happens to go in the opposite direction<?>
 		th_dot = u[0]*np.tan(u[1])/self.ego_to_hitch
 		hitch_dot = -u[0]*(np.sin(x[3])/self.L_trailer + np.tan(u[1])/self.ego_to_hitch)
 		
 		f = np.array([xdot, ydot, th_dot, hitch_dot])
 		return f
 	
-	def take_dynamics_step(self,x,u):  #Only for sim
+	# TESTING FUNCTION: to test the dynamics function
+	def take_dynamics_step(self,x,u): 
 		f = self.continuous_time_full_dynamics(x,u);
-		
 		x_new = np.zeros(x.shape);
 		x_new[0] = x[0] + f[0]*self.dt;
 		x_new[1] = x[1] + f[1]*self.dt;
@@ -81,7 +80,8 @@ class Car(object):
 		return x_new;
 
 	def add_initial_state_constraint(self,x,x0):
-		self.prog.AddBoundingBoxConstraint(x0,x0,x);
+		# self.prog.AddBoundingBoxConstraint(x0,x0,x);
+		self.prog.AddLinearEqualityConstraint(x,x0);
 
 	def add_input_constraints(self, u, dt):
 		for i,ui in enumerate(u):
@@ -92,17 +92,19 @@ class Car(object):
 	def add_state_constraints(self,x):
 		for xi in x:
 			self.prog.AddBoundingBoxConstraint(-self.hitch_limit * math.pi/180, self.hitch_limit * math.pi/180, xi[3]) # hitch angle limit
-			
+			self.prog.AddBoundingBoxConstraint(self.map_min[0], self.map_max[0], xi[0])
+			self.prog.AddBoundingBoxConstraint(self.map_min[1], self.map_max[1], xi[1])
+
 
 	def add_dynamic_constraints(self,x,u, dt):
 		for i in range(self.N-1):
 			f = self.continuous_time_full_dynamics(x[i,:],u[i,:])
 			for j in range(self.nx):
 				exp = x[i][j] + f[j]*dt[i] - x[i+1][j]
-				# pdb.set_trace()
 				self.prog.AddConstraint(exp[0], 0, 0);
 		
-	def get_trailer_position_from_car_state(self,x_car):		#Returns trailer coordinates in world frame using car state in the world frame as a 2, array
+	def get_trailer_position_from_car_state(self,x_car):		
+		#Returns trailer coordinates in world frame using car state in the world frame as a 2, array
 		tx_car = -self.ego_to_hitch - self.L_trailer*np.cos(x_car[3])
 		ty_car = -self.L_trailer*np.sin(x_car[3])
 		
@@ -115,14 +117,24 @@ class Car(object):
 		t_w = t_w.flatten()[:2];
 		return t_w
 
+	def find_closest_point_cost(self, xi, ref):
+		#Find the closest point on the path to the current state
+		dist = np.sum((ref - xi[:2])**4, axis = 1);
+		closest_dist = np.min(dist);
+		return closest_dist
+	
 	def trailer_cost_evaluator(self, x):
 			cost = 0;
-			for i in range(x.shape[0]):
+			for i in range(x.shape[0]-1):
 				x_current = x[i][:]
 				t_w = self.get_trailer_position_from_car_state(x_current);
-				cost = cost + np.linalg.norm(t_w  - self.desired_trailer_path[i,:2])**2;
-				cost = self.tracking_gain * cost;
-		
+				dist_cost = self.find_closest_point_cost(t_w, self.desired_trailer_path[:,:2])
+				cost = cost + self.tracking_gain*dist_cost;
+				# cost = self.tracking_gain * cost;
+			
+			t_w_final = self.get_trailer_position_from_car_state(x[-1]);
+			final_trailer_cost = np.sum((t_w_final - self.desired_trailer_path[-1,:2])**2);
+			cost = cost + self.final_tracking_gain * final_trailer_cost;
 			return cost
 
 	def acc_cost_evaluator(self, u):
@@ -138,6 +150,7 @@ class Car(object):
 			car_xy = vars_x.reshape((self.N,-1))
 			cost_trailer = self.trailer_cost_evaluator(car_xy)
 			cost_trailer = self.tracking_cost_gain * cost_trailer;
+			print("cost_trailer: ", cost_trailer)
 			return cost_trailer
 		
 		def accCostHelper(vars_u):
@@ -176,17 +189,36 @@ class Car(object):
 		for ui in u:
 			self.prog.AddQuadraticCost(ui @ self.R@ ui.T);
 
-	def add_warm_start(self, x):
+	def add_warm_start(self, x, u, dt):
+		# x_guess = np.linspace([self.desired_trailer_path[0,0], self.desired_trailer_path[0,1], self.desired_trailer_path[0,3], 0],\
+		# 	 				   [self.desired_trailer_path[-1,0], self.desired_trailer_path[-1,1], self.desired_trailer_path[-1,3], 0], self.N)
+		
+		u0_guess = np.random.choice(np.linspace(self.umin[0], self.umax[0], self.N-1), self.N-1).reshape(-1,1)
+		u1_guess = np.random.choice(np.linspace(self.umin[1], self.umax[1], self.N-1), self.N-1).reshape(-1,1)
+		u_guess = np.hstack((u0_guess, u1_guess))
+
+		dt_guess = np.random.choice(np.linspace(self.dt_limits[0], self.dt_limits[1], self.N-1), self.N-1)
+
+
+		# for i in range(self.N):
+		# 	self.prog.SetInitialGuess(x[i], x_guess[i])
+		for i in range(self.N-1):
+			self.prog.SetInitialGuess(u[i], u_guess[i])
+			self.prog.SetInitialGuess(dt[i][0], dt_guess[i])
+
+
 		for i in range(self.N):
-			x_guess = np.array([self.desired_trailer_path[i,0], self.desired_trailer_path[i,1], self.desired_trailer_path[i,2], 0])
-			self.prog.SetInitialGuess(x[i], x_guess )
+			x_guess = np.array([self.desired_trailer_path[i,0], self.desired_trailer_path[i,1], self.desired_trailer_path[i,3], 0])
+			self.prog.SetInitialGuess(x[i], x_guess)
+
 		# for i in range(self.N-1):
 		# 	self.prog.SetInitialGuess(u[i], self.u_init[i])
 
-	def add_quadratic_cost_for_car_state(self, x):
-		x_error = x - self.desired_trailer_path
-		for i in range(self.N):
-			self.prog.AddQuadraticCost(x_error[i] @ self.Q @ x_error[i].T)
+	# def add_quadratic_cost_for_car_state(self, x):
+	# 	# TESTING FUNCTION - only used for testing the mpc code
+	# 	x_error = x - self.desired_trailer_path
+	# 	for i in range(self.N):
+	# 		self.prog.AddQuadraticCost(x_error[i] @ self.Q @ x_error[i].T)
 
 	def compute_mpc_feedback(self):
 			
@@ -194,10 +226,13 @@ class Car(object):
 		
 		#Inital pose of the car is at the start and trailer is straight
 		x0 = np.zeros((self.nx,))
-		x0[0] = self.desired_trailer_path[0,0] ;
-		x0[1] = self.desired_trailer_path[0,1] ;
-		x0[2] = self.desired_trailer_path[0,2];
+		x0[0] = np.cos(self.desired_trailer_path[0,3])*(self.ego_to_hitch + self.L_trailer) + self.desired_trailer_path[0,0]
+		x0[1] = np.sin(self.desired_trailer_path[0,3])*(self.ego_to_hitch + self.L_trailer) + self.desired_trailer_path[0,1]
+		x0[2] = self.desired_trailer_path[0,3];
 		x0[3] = 0;
+
+		print("Initial state of the car is ", x0)
+		print("Initial state of the trailer is ", self.desired_trailer_path[0,:])
 
 		#Initialize the decision variables
 		x = np.zeros((self.N, self.nx), dtype="object")
@@ -216,25 +251,28 @@ class Car(object):
 		# TODO :: Add saturation constraints
 		self.add_input_constraints(u, dt);
 		self.add_state_constraints(x);
+
 		# TODO :: Add dynamics constraints
 		self.add_dynamic_constraints(x,u, dt);
 
 		# TODO :: Add obstacle constraints
-		# self.add_obstacle_constraints(x);
+		self.add_obstacle_constraints(x);
 
 		# TODO :: Add objective function
 		self.add_costs(x, u);
-		self.add_actuation_cost(u);
+		# self.add_actuation_cost(u);
+
 		#self.add_quadratic_cost_for_car_state(x);
+		
 		# TODO :: Add warm start
-		self.add_warm_start(x);
+		# self.add_warm_start	(x,u,dt);
 
 		solver = SnoptSolver();
 		result = solver.Solve(self.prog);
 		print("MPC solution complete!")
 		x_result = result.GetSolution(x);	
 		# print(x_result)
-		print(result.GetSolution(u))
+		# print(result.GetSolution(u))
 
 		trailer_traj = []
 		for i in range(self.N):
@@ -276,16 +314,17 @@ class Car(object):
 file = "/home/aadith/Desktop/f1_tenth/workspace/src/project/maps/wu_chen_map1_obs2"
 # file = "/home/aadith/Desktop/f1_tenth/workspace/src/project/maps/wu_chen_map1"
 car = Car(file);
+car.compute_mpc_feedback();
 # pdb.set_trace()
 
-# car.world.collision_test_case([0.998, 4.26]);
-# car.world.collision_test_case([1, 4.17]);
-# car.world.collision_test_case([1.99,-1.78]);
-# car.world.collision_test_case([1.96,-1.78]);
-# car.world.collision_test_case([-1.6,0.206]);
-# car.world.collision_test_case([-0.845,0.654]);
+# car.world.is_collided([-1.94,-0.48]);
+# car.world.is_collided([-1.85, -0.5]);
+# car.world.is_collided([0, 0.1]);
+# # car.world.is_collided([1.99,-1.78]);
+# car.world.is_collided([1.96,-1.78]);
+# car.world.is_collided([-1.6,0.206]);
+# car.world.is_collided([-0.845,0.654]);
 
-car.compute_mpc_feedback();
 
 # x0 = np.array([0,0,0,0]);
 # u0 = np.array([1,-0.1]);

@@ -2,12 +2,14 @@ import yaml
 import numpy as np
 import cv2
 import pdb
+import seaborn as sns
 
 class Map(object):
 
 	def __init__(self, map_file):
 
 		#Loading map deets
+		print("Loading map from " + map_file )
 		with open(map_file + '.yaml', 'r') as stream:
 			try:
 				map_data = yaml.load(stream)
@@ -22,9 +24,10 @@ class Map(object):
 		img = cv2.imread(map_file + '.pgm', cv2.IMREAD_GRAYSCALE)
 
 		## changing values of the img file to create a map file
-		self.map = np.zeros_like(img)
+		self.map = np.ones_like(img)
 		self.map[img == 0] = 0       # occupied cells
-		self.map[img == 254] = 1     # free cells
+		self.map[img == 254 ] = 1
+		self.map[img == 255] = 1     # free cells
 		self.map[img == 205] = 2     # unknown cells
 
 		print("Map image loaded!")
@@ -48,8 +51,15 @@ class Map(object):
 		x_world = xi[0]
 		y_world = xi[1]
 		x_pix, y_pix = self.world_to_pixel(x_world, y_world)
-
-		if self.map[ self.map.shape[0] -1 -y_pix ,x_pix] == 0: # note : pixel indexing assumes (y,x) in our case
+		# pdb.set_trace()
+		if self.map[ self.map.shape[0] - 1 -y_pix ,x_pix] == 0: # note : pixel indexing assumes (y,x) in our case
+			# print("Collision detected!")
+			# print("x_world: ", x_world, "y_world: ", y_world)
+			# print("final pix : ", self.map.shape[0] - 1 -y_pix ,"  ,  ",x_pix)
+			# print("x pix ", x_pix, " , y pix ", y_pix)
 			return True
 		else:
+			# print("No collision!")
+			# print("x_world: ", x_world, "y_world: ", y_world)
+			# print("final pix : ", self.map.shape[0] - 1 -y_pix ,"  ,  ",x_pix)
 			return False
