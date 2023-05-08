@@ -1,4 +1,4 @@
-image: wu_chen_map1_obs.pgm
+image: wu_chen_map1_obs2.pgm
 mode: trinary
 resolution: 0.05
 origin: [-3.97, -4.87, 0]
