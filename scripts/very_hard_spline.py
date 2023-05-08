@@ -5,7 +5,7 @@ import numpy as np
 import csv
 import math
 
-file_name = "wu_chen_obs_1"
+file_name = "wu_chen_obs2"
 folder_path = "/home/aadith/Desktop/f1_tenth/workspace/src/project/waypoints/"
 
 def save_as_csv(x,y, fname):
@@ -35,7 +35,7 @@ k = 1
 splx = InterpolatedUnivariateSpline(axes, x, k = k)
 sply = InterpolatedUnivariateSpline(axes, y, k = k)
 
-sampling_density = 10;
+sampling_density = 15;
 axes_sampling = np.linspace(1,len(x), sampling_density*len(x));
 
 save_as_csv(splx(axes_sampling), sply(axes_sampling), folder_path+file_name+"_spline_"+str(sampling_density)+".csv")
