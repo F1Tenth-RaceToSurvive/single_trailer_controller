@@ -29,7 +29,7 @@ class Car(object):
 		self.world = Map(file);
 
 		#Load a csv with x and y coordinates of the trailer path
-		self.desired_trailer_path = np.loadtxt('/home/aadith/Desktop/f1_tenth/workspace/src/project/waypoints/wu_chen_obs2_spline_10.csv', delimiter=',')
+		self.desired_trailer_path = np.loadtxt('../waypoints/wu_chen_obs2_spline_10.csv', delimiter=',')
 		# self.desired_trailer_path = np.loadtxt('/home/aadith/Desktop/f1_tenth/workspace/src/project/waypoints/wu_chen_single_curve.csv', delimiter=',')
 		self.nx = 4 # xc, yc , yawc, hitch
 		self.nu = 2 # v, steering angle
@@ -291,16 +291,17 @@ class Car(object):
 		
 
 		self.trailer_traj = np.array(trailer_traj);
-		self.car_traj = np.array(x_result[:,:2]);
+		self.car_traj = np.array(x_result[:,:3]);
 
 		#Save car traj as a csv file
 		result_file_name = "single_obstacle.csv"
-		np.savetxt("/home/aadith/Desktop/f1_tenth/workspace/src/project/mpc_paths/" + result_file_name, self.car_traj, delimiter=",")
+		# np.savetxt("/home/aadith/Desktop/f1_tenth/workspace/src/project/mpc_paths/" + result_file_name, self.car_traj, delimiter=",")
 
 		# Plot the trajectory
 		fig, ax = plt.subplots(figsize=(10, 10))
 
 		def animate(i):
+			ax.clear()
 			# set the range of x axis and y axis
 			ax.set_xlim(-5, 5)
 			ax.set_ylim(-5, 5)
@@ -309,8 +310,10 @@ class Car(object):
 			ax.plot(self.car_traj[i,0], self.car_traj[i,1],"--x" , label = "car path mpc");
 			ax.plot(self.trailer_traj[i,0], self.trailer_traj[i,1], "r--o",label = "trailer path mpc");
 			# Plot a the hitch
-			ax.plot([self.car_traj[i,0], self.trailer_traj[i, 0]],
-					[self.car_traj[i, 1], self.trailer_traj[i, 1]])
+			hitch = np.array([self.car_traj[i,0], self.car_traj[i,1]]) - self.ego_to_hitch*np.array([np.cos(self.car_traj[i, 2]), np.sin(self.car_traj[i, 2])])
+			ax.plot([self.car_traj[i, 0], hitch[0], self.trailer_traj[i, 0]],
+					[self.car_traj[i, 1], hitch[1], self.trailer_traj[i, 1]],
+					'--o', color="magenta", label="hitch", markersize=3)
 			# Plot obstacles
 			ax.scatter(self.occupied_pixels[:,0], self.occupied_pixels[:, 1], marker=',', color="black", label="obstacles", s=5)
 
@@ -329,7 +332,7 @@ class Car(object):
 
 ################### Testing #######################
 
-file = "/home/aadith/Desktop/f1_tenth/workspace/src/project/maps/wu_chen_map1_obs2"
+file = "../maps/wu_chen_map1_obs2"
 # file = "/home/aadith/Desktop/f1_tenth/workspace/src/project/maps/wu_chen_map1"
 car = Car(file);
 car.compute_mpc_feedback();
