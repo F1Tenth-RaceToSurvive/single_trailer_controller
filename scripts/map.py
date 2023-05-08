@@ -2,8 +2,6 @@ import yaml
 import numpy as np
 import cv2
 import pdb
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 class Map(object):
 
@@ -52,16 +50,6 @@ class Map(object):
 		x_pix, y_pix = self.world_to_pixel(x_world, y_world)
 
 		if self.map[ self.map.shape[0] -1 -y_pix ,x_pix] == 0: # note : pixel indexing assumes (y,x) in our case
-			# pdb.set_trace()
-			# print("Collision detected at world : " + str(x_world) + ", " + str(y_world))
-			# print("Collision detected at pixel : " + str(x_pix) + ", " + str(y_pix))
 			return True
 		else:
 			return False
-
-
-	def collision_test_case(self,x):
-		if self.is_collided(x):
-			print("collided!")
-		else:
-			print("not collided!")

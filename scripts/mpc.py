@@ -25,18 +25,17 @@ import pdb
 from map import *
 
 class Car(object):
-	def __init__(self, file = "/home/aadith/Desktop/f1_tenth/workspace/src/project/maps/wu_chen_map1"):
+	def __init__(self, file):
 		self.prog = MathematicalProgram();
 
 		self.world = Map(file);
 
 		#Load a csv with x and y coordinates of the trailer path
-		self.desired_trailer_path = np.loadtxt('/home/aadith/Desktop/f1_tenth/workspace/src/project/waypoints/wu_chen_obs_1_spline_10.csv', delimiter=',')
+		self.desired_trailer_path = np.loadtxt('/home/aadith/Desktop/f1_tenth/workspace/src/project/waypoints/wu_chen_obs2_spline_10.csv', delimiter=',')
 		# self.desired_trailer_path = np.loadtxt('/home/aadith/Desktop/f1_tenth/workspace/src/project/waypoints/wu_chen_single_curve.csv', delimiter=',')
 		# print(self.desired_trailer_path)
 		self.nx = 4 # xc, yc , yawc, hitch
 		self.nu = 2 # v, steering angle
-		self.dt = 0.05 # time step
 		self.N = self.desired_trailer_path.shape[0]; # horizon length
 
 		self.Q = np.diag([10,10,0,0]);
@@ -47,14 +46,15 @@ class Car(object):
 		self.ego_to_hitch = 0.48;
 		steering_angle_limit = 22;  # In degrees
 		self.hitch_limit = 60;  # In degrees
-		self.tracking_gain = 1; #The relative gains btween each tracking point
-
-		self.acc_cost_gain = 0.5; #The weight of acceleration cost
+		self.tracking_gain = 0.9; #The relative gains btween each tracking point
+		self.acc_cost_gain = 1; #The weight of acceleration cost
 		self.tracking_cost_gain = 1;#The weight of tracking cost term as a whole
 
 
 		self.umax = np.array([4, steering_angle_limit*math.pi/180]);
 		self.umin = np.array([0, -steering_angle_limit*math.pi/180]);
+	
+		self.dt_limits = np.array([0.05, 1]); # The limits of the time step
 	
 		
 	# Write the continuous dynamics of the car system with single trailer here - on axle trailer from common road vehicles source
@@ -80,26 +80,28 @@ class Car(object):
 
 		return x_new;
 
-	
 	def add_initial_state_constraint(self,x,x0):
 		self.prog.AddBoundingBoxConstraint(x0,x0,x);
 
-	def add_input_constraints(self, u):
-		for ui in u:
+	def add_input_constraints(self, u, dt):
+		for i,ui in enumerate(u):
 			self.prog.AddBoundingBoxConstraint(self.umin[0], self.umax[0], ui[0])
 			self.prog.AddBoundingBoxConstraint(self.umin[1], self.umax[1], ui[1])
+			self.prog.AddBoundingBoxConstraint(self.dt_limits[0], self.dt_limits[1], dt[i]) # time step limit
 
 	def add_state_constraints(self,x):
 		for xi in x:
 			self.prog.AddBoundingBoxConstraint(-self.hitch_limit * math.pi/180, self.hitch_limit * math.pi/180, xi[3]) # hitch angle limit
 			
-	def add_dynamic_constraints(self,x,u):
+
+	def add_dynamic_constraints(self,x,u, dt):
 		for i in range(self.N-1):
 			f = self.continuous_time_full_dynamics(x[i,:],u[i,:])
 			for j in range(self.nx):
-				self.prog.AddConstraint(x[i][j] + f[j]*self.dt - x[i+1][j], 0, 0);
+				exp = x[i][j] + f[j]*dt[i] - x[i+1][j]
+				# pdb.set_trace()
+				self.prog.AddConstraint(exp[0], 0, 0);
 		
-
 	def get_trailer_position_from_car_state(self,x_car):		#Returns trailer coordinates in world frame using car state in the world frame as a 2, array
 		tx_car = -self.ego_to_hitch - self.L_trailer*np.cos(x_car[3])
 		ty_car = -self.L_trailer*np.sin(x_car[3])
@@ -113,7 +115,6 @@ class Car(object):
 		t_w = t_w.flatten()[:2];
 		return t_w
 
-
 	def trailer_cost_evaluator(self, x):
 			cost = 0;
 			for i in range(x.shape[0]):
@@ -123,7 +124,6 @@ class Car(object):
 				cost = self.tracking_gain * cost;
 		
 			return cost
-	
 
 	def acc_cost_evaluator(self, u):
 		cost = 0;
@@ -133,7 +133,6 @@ class Car(object):
 			cost = cost + (acc_current - acc_next)**2;
 		return cost
 		
-
 	def add_costs(self, x, u):
 		def trackingCostHelper(vars_x):
 			car_xy = vars_x.reshape((self.N,-1))
@@ -154,7 +153,6 @@ class Car(object):
 		# Add cost for acceleration
 		self.prog.AddCost(accCostHelper, vars_u);
 		
-
 	def add_obstacle_constraints(self, x):
 		def obsHelper(vars):
 			car_x = vars.reshape((self.N, -1))
@@ -205,25 +203,28 @@ class Car(object):
 		x = np.zeros((self.N, self.nx), dtype="object")
 		for i in range(self.N):
 			x[i] = self.prog.NewContinuousVariables(self.nx, "x_" + str(i))
+
 		u = np.zeros((self.N-1, self.nu), dtype="object")
+		dt = np.zeros((self.N-1, ), dtype="object")
 		for i in range(self.N-1):
 			u[i] = self.prog.NewContinuousVariables(self.nu, "u_" + str(i))
+			dt[i] = self.prog.NewContinuousVariables(1, "dt_" + str(i));
 
 		# TODO :: Add Initial state constraint
 		# self.add_initial_state_constraint(x[0], x0);
 
 		# TODO :: Add saturation constraints
-		self.add_input_constraints(u);
+		self.add_input_constraints(u, dt);
 		self.add_state_constraints(x);
 		# TODO :: Add dynamics constraints
-		self.add_dynamic_constraints(x,u);
+		self.add_dynamic_constraints(x,u, dt);
 
 		# TODO :: Add obstacle constraints
-		self.add_obstacle_constraints(x);
+		# self.add_obstacle_constraints(x);
 
 		# TODO :: Add objective function
 		self.add_costs(x, u);
-		# self.add_actuation_cost(u);
+		self.add_actuation_cost(u);
 		#self.add_quadratic_cost_for_car_state(x);
 		# TODO :: Add warm start
 		self.add_warm_start(x);
@@ -272,8 +273,8 @@ class Car(object):
 
 ################### Testing #######################
 
-# file = "/home/aadith/Desktop/f1_tenth/workspace/src/project/maps/wu_chen_map1_obs"
-file = "/home/aadith/Desktop/f1_tenth/workspace/src/project/maps/wu_chen_map1"
+file = "/home/aadith/Desktop/f1_tenth/workspace/src/project/maps/wu_chen_map1_obs2"
+# file = "/home/aadith/Desktop/f1_tenth/workspace/src/project/maps/wu_chen_map1"
 car = Car(file);
 # pdb.set_trace()
 
