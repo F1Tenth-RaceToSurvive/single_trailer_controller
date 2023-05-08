@@ -5,8 +5,8 @@ import numpy as np
 import csv
 import math
 
-file_name = "wu_chen_obs2"
-folder_path = "/home/aadith/Desktop/f1_tenth/workspace/src/project/waypoints/"
+file_name = "single_obstacle"
+folder_path = "/home/aadit/ESE615/f1tenth_ws/src/project/mpc_paths/"
 
 def save_as_csv(x,y, fname):
     with open(fname, 'w') as csvfile:
@@ -35,7 +35,7 @@ k = 1
 splx = InterpolatedUnivariateSpline(axes, x, k = k)
 sply = InterpolatedUnivariateSpline(axes, y, k = k)
 
-sampling_density = 15;
+sampling_density = 2;
 axes_sampling = np.linspace(1,len(x), sampling_density*len(x));
 
 save_as_csv(splx(axes_sampling), sply(axes_sampling), folder_path+file_name+"_spline_"+str(sampling_density)+".csv")

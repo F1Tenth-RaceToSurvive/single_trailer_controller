@@ -1,7 +1,7 @@
 pure_pursuit_node:
   ros__parameters:
     enable_vis: true
-    waypoint_filename: "wu_chen_straight_line_spline_3.csv"
+    waypoint_filename: "single_obstacle_spline_2.csv"
     map_frame: "map"
     drive_topic: "/drive"
     pose_topic: "/ego_racecar/odom"
