@@ -14,6 +14,7 @@ from scipy.linalg import solve_continuous_are
 from pydrake.solvers import mathematicalprogram as mp
 from pydrake.solvers.osqp import OsqpSolver
 from pydrake.solvers.snopt import SnoptSolver
+from pydrake.solvers.ipopt import IpoptSolver
 from pydrake.solvers.mathematicalprogram import MathematicalProgram, Solve
 import pydrake.symbolic as sym
 from pydrake.autodiffutils import AutoDiffXd
@@ -29,7 +30,7 @@ class Car(object):
 		self.world = Map(file);
 
 		#Load a csv with x and y coordinates of the trailer path
-		self.desired_trailer_path = np.loadtxt('../waypoints/wu_chen_obs2_spline_10.csv', delimiter=',')
+		self.desired_trailer_path = np.loadtxt('../waypoints/wu_chen_2_obs1_spline_10.csv', delimiter=',')
 		# self.desired_trailer_path = np.loadtxt('/home/aadith/Desktop/f1_tenth/workspace/src/project/waypoints/wu_chen_single_curve.csv', delimiter=',')
 		self.nx = 4 # xc, yc , yawc, hitch
 		self.nu = 2 # v, steering angle
@@ -42,21 +43,21 @@ class Car(object):
 		self.L_trailer = 0.44;
 		self.ego_to_hitch = 0.48;
 		steering_angle_limit = 22;  # In degrees
-		self.hitch_limit = 60;  # In degrees
+		self.hitch_limit = 40;  # In degrees
 
-		self.tracking_gain = 2 #0.9; #The relative gains btween each tracking point
+		self.tracking_gain = 1 #0.9; #The relative gains btween each tracking point
 
 		self.acc_cost_gain = 1; #The weight of acceleration cost
-		self.tracking_cost_gain = 1;#The weight of tracking cost term as a whole
-		self.final_tracking_gain = 100; # final tracking cost gain for the final position of the trailer
+		self.tracking_cost_gain = 5;#The weight of tracking cost term as a whole
+		self.final_tracking_gain = 15; # final tracking cost gain for the final position of the trailer
 
 		# TODO: Constriants limits for the inputs and variables
-		self.umax = np.array([4, steering_angle_limit*math.pi/180]);
+		self.umax = np.array([3, steering_angle_limit*math.pi/180]);
 		self.umin = np.array([0, -steering_angle_limit*math.pi/180]);
-		self.dt_limits = np.array([0.05, 0.2]); # The limits of the time step
+		self.dt_limits = np.array([0.05, 0.15]); # The limits of the time step
 	
-		self.map_min = np.array([-3.9, -4.8])
-		self.map_max = np.array([4.5, 4.2])
+		# self.map_min = np.array([-3.9, -4.8])
+		# self.map_max = np.array([4.5, 4.2])
 
 		self.occupied_pixels = []
 		for row in range(self.world.map.shape[0]):
@@ -101,8 +102,8 @@ class Car(object):
 	def add_state_constraints(self,x):
 		for xi in x:
 			self.prog.AddBoundingBoxConstraint(-self.hitch_limit * math.pi/180, self.hitch_limit * math.pi/180, xi[3]) # hitch angle limit
-			self.prog.AddBoundingBoxConstraint(self.map_min[0], self.map_max[0], xi[0])
-			self.prog.AddBoundingBoxConstraint(self.map_min[1], self.map_max[1], xi[1])
+			# self.prog.AddBoundingBoxConstraint(self.map_min[0], self.map_max[0], xi[0])
+			# self.prog.AddBoundingBoxConstraint(self.map_min[1], self.map_max[1], xi[1])
 
 
 	def add_dynamic_constraints(self,x,u, dt):
@@ -128,7 +129,7 @@ class Car(object):
 
 	def find_closest_point_cost(self, xi, ref):
 		#Find the closest point on the path to the current state
-		dist = np.sum((ref - xi[:2])**6, axis = 1);
+		dist = np.sum((ref - xi[:2])**4, axis = 1);
 		closest_dist = np.min(dist);
 		return closest_dist
 	
@@ -202,22 +203,25 @@ class Car(object):
 		# x_guess = np.linspace([self.desired_trailer_path[0,0], self.desired_trailer_path[0,1], self.desired_trailer_path[0,3], 0],\
 		# 	 				   [self.desired_trailer_path[-1,0], self.desired_trailer_path[-1,1], self.desired_trailer_path[-1,3], 0], self.N)
 		
-		u0_guess = np.random.choice(np.linspace(self.umin[0], self.umax[0], self.N-1), self.N-1).reshape(-1,1)
-		u1_guess = np.random.choice(np.linspace(self.umin[1], self.umax[1], self.N-1), self.N-1).reshape(-1,1)
-		u_guess = np.hstack((u0_guess, u1_guess))
+		# u0_guess = np.random.choice(np.linspace(self.umin[0], self.umax[0], self.N-1), self.N-1).reshape(-1,1)
+		# u1_guess = np.random.choice(np.linspace(self.umin[1], self.umax[1], self.N-1), self.N-1).reshape(-1,1)
+		# u_guess = np.hstack((u0_guess, u1_guess))
 
-		dt_guess = np.random.choice(np.linspace(self.dt_limits[0], self.dt_limits[1], self.N-1), self.N-1)
-
-
-		# for i in range(self.N):
-		# 	self.prog.SetInitialGuess(x[i], x_guess[i])
-		for i in range(self.N-1):
-			self.prog.SetInitialGuess(u[i], u_guess[i])
-			self.prog.SetInitialGuess(dt[i][0], dt_guess[i])
+		# dt_guess = np.random.choice(np.linspace(self.dt_limits[0], self.dt_limits[1], self.N-1), self.N-1)
 
 
+		# # for i in range(self.N):
+		# # 	self.prog.SetInitialGuess(x[i], x_guess[i])
+		# for i in range(self.N-1):
+		# 	self.prog.SetInitialGuess(u[i], u_guess[i])
+		# 	self.prog.SetInitialGuess(dt[i][0], dt_guess[i])
+
+
+		x_guess_unit = (self.desired_trailer_path[0,:] - self.desired_trailer_path[-1,:])/self.N
 		for i in range(self.N):
-			x_guess = np.array([self.desired_trailer_path[i,0], self.desired_trailer_path[i,1], self.desired_trailer_path[i,3], 0])
+			x_guess = self.desired_trailer_path[0,:] - i*x_guess_unit
+			x_guess[2] = 0
+			x_guess[3] = 0
 			self.prog.SetInitialGuess(x[i], x_guess)
 
 		# for i in range(self.N-1):
@@ -274,14 +278,15 @@ class Car(object):
 		#self.add_quadratic_cost_for_car_state(x);
 		
 		# TODO :: Add warm start
-		self.add_warm_start	(x,u,dt);
+		# self.add_warm_start	(x,u,dt);
 
 		solver = SnoptSolver();
+		# solver = IpoptSolver();
 		result = solver.Solve(self.prog);
 		print("MPC solution complete!")
 		x_result = result.GetSolution(x);	
 		# print(x_result)
-		# print(result.GetSolution(u))
+		print(result.get_solution_result())
 
 		trailer_traj = []
 		for i in range(self.N):
@@ -292,10 +297,13 @@ class Car(object):
 
 		self.trailer_traj = np.array(trailer_traj);
 		self.car_traj = np.array(x_result[:,:3]);
+		for x in self.car_traj:
+			print(self.world.is_collided(x))
 
 		#Save car traj as a csv file
-		result_file_name = "single_obstacle.csv"
-		# np.savetxt("/home/aadith/Desktop/f1_tenth/workspace/src/project/mpc_paths/" + result_file_name, self.car_traj, delimiter=",")
+		result_file_name = "mpc_wu_chen_2_obs1.csv"
+		np.savetxt("/home/aadith/Desktop/f1_tenth/workspace/src/project/mpc_paths/" + result_file_name, self.car_traj, delimiter=",")
+		# np.savetxt("/home/aadith/Desktop/f1_tenth/workspace/src/project/mpc_paths/trailer_" + result_file_name, self.trailer_traj, delimiter=",")
 
 		# Plot the trajectory
 		fig, ax = plt.subplots(figsize=(10, 10))
@@ -315,7 +323,7 @@ class Car(object):
 					[self.car_traj[i, 1], hitch[1], self.trailer_traj[i, 1]],
 					'--o', color="magenta", label="hitch", markersize=3)
 			# Plot obstacles
-			ax.scatter(self.occupied_pixels[:,0], self.occupied_pixels[:, 1], marker=',', color="black", label="obstacles", s=5)
+			ax.scatter(self.occupied_pixels[:,0], self.occupied_pixels[:, 1], marker=',', color="black", label="obstacles", s=4)
 
 		# Call the animation
 		ani = FuncAnimation(fig, animate, frames=self.N, interval=200, repeat=True)
@@ -332,7 +340,7 @@ class Car(object):
 
 ################### Testing #######################
 
-file = "../maps/wu_chen_map1_obs2"
+file = "../maps/wu_chen_map2_obs1"
 # file = "/home/aadith/Desktop/f1_tenth/workspace/src/project/maps/wu_chen_map1"
 car = Car(file);
 car.compute_mpc_feedback();

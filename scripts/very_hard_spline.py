@@ -5,8 +5,8 @@ import numpy as np
 import csv
 import math
 
-file_name = "single_obstacle"
-folder_path = "/home/aadit/ESE615/f1tenth_ws/src/project/mpc_paths/"
+file_name = "trailer_mpc_wu_chen_2_obs1"
+folder_path = "/home/aadith/Desktop/f1_tenth/workspace/src/project/waypoints/"
 
 def save_as_csv(x,y, fname):
     with open(fname, 'w') as csvfile:

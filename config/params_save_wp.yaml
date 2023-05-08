@@ -1,4 +1,4 @@
 save_waypoints_node:
   ros__parameters:
-    file_name: "wu_chen_obs2.csv"
+    file_name: "wu_chen_2_obs1.csv"
     path_to_folder: "/home/aadith/Desktop/f1_tenth/workspace/src/project/waypoints/"

@@ -23,12 +23,13 @@ class Map(object):
 		img = cv2.imread(map_file + '.pgm', cv2.IMREAD_GRAYSCALE)
 
 		## changing values of the img file to create a map file
+		print(np.unique(img, return_counts=True))
 		self.map = np.ones_like(img)
 		self.map[img == 0] = 0       # occupied cells
+		self.map[img == 103] = 0
 		self.map[img == 254 ] = 1
 		self.map[img == 255] = 1     # free cells
 		self.map[img == 205] = 2     # unknown cells
-
 		print("Map image loaded!")
 
 	# functiion to convert the pixel coordinate to world coordinate using resolution and origin
@@ -53,6 +54,11 @@ class Map(object):
 		y_world = xi[1]
 		x_pix, y_pix = self.world_to_pixel(x_world, y_world)
 		# pdb.set_trace()
+		indi = self.map.shape[0] - 1 -y_pix;
+		indj = x_pix;
+
+		if(indi < 0 or indi >= self.map.shape[0] or indj < 0 or indj >= self.map.shape[1]):
+			return False
 		if self.map[ self.map.shape[0] - 1 -y_pix ,x_pix] == 0: # note : pixel indexing assumes (y,x) in our case
 			# print("Collision detected!")
 			# print("x_world: ", x_world, "y_world: ", y_world)
