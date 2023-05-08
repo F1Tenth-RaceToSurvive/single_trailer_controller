@@ -1,14 +1,14 @@
 pure_pursuit_node:
   ros__parameters:
     enable_vis: true
-    waypoint_filename: "physical3_spline.csv"
+    waypoint_filename: "single_obstacle_2.csv"
     map_frame: "map"
     drive_topic: "/drive"
     pose_topic: "/pf/pose/odom"
     waypoint_vis_topic: "/waypoint_vis"
     track_waypoint_vis_topic: "/track_waypoint_vis"
-    look_ahead_dist:  2.0
+    look_ahead_dist:  0.5
     window_size:  4
     viable_dist:  14.0
-    steering_gain:  0.2
-    max_speed: 2.0
+    steering_gain:  0.4
+    max_speed: 1.0

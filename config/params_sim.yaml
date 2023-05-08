@@ -11,4 +11,4 @@ pure_pursuit_node:
     window_size:  4
     viable_dist:  14.0
     steering_gain:  0.7
-    max_speed: 2.0
+    max_speed: 1.0

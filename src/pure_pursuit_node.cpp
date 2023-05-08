@@ -81,8 +81,11 @@ void PurePursuit::updateClosestWaypoint(double look_ahead_dist, const nav_msgs::
 
     // If we have an estimate of the last closest waypoint, search through a window of waypoints around it
     //Otherwise, search through the entire list of waypoints
-    int start_idx = closest_waypoint_idx_ == -1 ? 0 : closest_waypoint_idx_;
-    int end_idx = closest_waypoint_idx_ == -1 ? waypoints_.size() : closest_waypoint_idx_ + window_size;
+    // int start_idx = closest_waypoint_idx_ == -1 ? 0 : closest_waypoint_idx_;
+    // int end_idx = closest_waypoint_idx_ == -1 ? waypoints_.size() : closest_waypoint_idx_ + window_size;
+
+    int start_idx = 0;
+    int end_idx = waypoints_.size();
 
     for(int i = start_idx; i < end_idx; i++)
     {
