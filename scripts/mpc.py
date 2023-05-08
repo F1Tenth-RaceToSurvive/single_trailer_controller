@@ -302,7 +302,7 @@ class Car(object):
 
 		#Save car traj as a csv file
 		result_file_name = "mpc_wu_chen_2_obs2.csv"
-		np.savetxt("/home/aadith/Desktop/f1_tenth/workspace/src/project/mpc_paths/" + result_file_name, self.car_traj, delimiter=",")
+		# np.savetxt("/home/aadith/Desktop/f1_tenth/workspace/src/project/mpc_paths/" + result_file_name, self.car_traj, delimiter=",")
 		# np.savetxt("/home/aadith/Desktop/f1_tenth/workspace/src/project/mpc_paths/trailer_" + result_file_name, self.trailer_traj, delimiter=",")
 
 		# Plot the trajectory
@@ -324,6 +324,10 @@ class Car(object):
 					'--o', color="magenta", label="hitch", markersize=3)
 			# Plot obstacles
 			ax.scatter(self.occupied_pixels[:,0], self.occupied_pixels[:, 1], marker=',', color="black", label="obstacles", s=4)
+			ax.legend()
+			ax.set_title("Single Trailer Trajectory Generation")
+			ax.set_xlabel("X (m)")
+			ax.set_ylabel("Y (m)")
 
 		# Call the animation
 		ani = FuncAnimation(fig, animate, frames=self.N, interval=200, repeat=True)
