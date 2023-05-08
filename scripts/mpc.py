@@ -48,12 +48,12 @@ class Car(object):
 
 		self.acc_cost_gain = 1; #The weight of acceleration cost
 		self.tracking_cost_gain = 1;#The weight of tracking cost term as a whole
-		self.final_tracking_gain = 1000; # final tracking cost gain for the final position of the trailer
+		self.final_tracking_gain = 100; # final tracking cost gain for the final position of the trailer
 
 		# TODO: Constriants limits for the inputs and variables
 		self.umax = np.array([4, steering_angle_limit*math.pi/180]);
-		self.umin = np.array([2, -steering_angle_limit*math.pi/180]);
-		self.dt_limits = np.array([0.05, 1]); # The limits of the time step
+		self.umin = np.array([0, -steering_angle_limit*math.pi/180]);
+		self.dt_limits = np.array([0.05, 0.2]); # The limits of the time step
 	
 		self.map_min = np.array([-3.9, -4.8])
 		self.map_max = np.array([4.5, 4.2])
@@ -119,7 +119,7 @@ class Car(object):
 
 	def find_closest_point_cost(self, xi, ref):
 		#Find the closest point on the path to the current state
-		dist = np.sum((ref - xi[:2])**4, axis = 1);
+		dist = np.sum((ref - xi[:2])**6, axis = 1);
 		closest_dist = np.min(dist);
 		return closest_dist
 	
@@ -246,7 +246,7 @@ class Car(object):
 			dt[i] = self.prog.NewContinuousVariables(1, "dt_" + str(i));
 
 		# TODO :: Add Initial state constraint
-		# self.add_initial_state_constraint(x[0], x0);
+		self.add_initial_state_constraint(x[0], x0);
 
 		# TODO :: Add saturation constraints
 		self.add_input_constraints(u, dt);
@@ -265,7 +265,7 @@ class Car(object):
 		#self.add_quadratic_cost_for_car_state(x);
 		
 		# TODO :: Add warm start
-		# self.add_warm_start	(x,u,dt);
+		self.add_warm_start	(x,u,dt);
 
 		solver = SnoptSolver();
 		result = solver.Solve(self.prog);
@@ -283,6 +283,10 @@ class Car(object):
 
 		self.trailer_traj = np.array(trailer_traj);
 		self.car_traj = np.array(x_result[:,:2]);
+
+		#Save car traj as a csv file
+		result_file_name = "single_obstacle.csv"
+		np.savetxt("/home/aadith/Desktop/f1_tenth/workspace/src/project/mpc_paths/" + result_file_name, self.car_traj, delimiter=",")
 
 		# Plot the trajectory
 		fig, ax = plt.subplots()
