@@ -297,6 +297,7 @@ class Car(object):
 
 		self.trailer_traj = np.array(trailer_traj);
 		self.car_traj = np.array(x_result[:,:3]);
+		self.hitch = self.car_traj[:, :2] - self.ego_to_hitch*np.array([np.cos(self.car_traj[:,2]), np.sin(self.car_traj[:,2])]).T
 		for x in self.car_traj:
 			print(self.world.is_collided(x))
 
@@ -309,28 +310,27 @@ class Car(object):
 		fig, ax = plt.subplots(figsize=(10, 10))
 
 		def animate(i):
-			ax.clear()
 			# set the range of x axis and y axis
 			ax.set_xlim(-5, 5)
 			ax.set_ylim(-5, 5)
 			ax.axis('equal')
-			ax.plot(self.desired_trailer_path[:,0], self.desired_trailer_path[:,1], "b--o",label = "desired path", markersize=2);	
-			ax.plot(self.car_traj[i,0], self.car_traj[i,1],"--x" , label = "car path mpc");
-			ax.plot(self.trailer_traj[i,0], self.trailer_traj[i,1], "r--o",label = "trailer path mpc");
+			ax.plot(self.desired_trailer_path[:,0], self.desired_trailer_path[:,1], "b--o", markersize=2);
+			ax.plot(self.trailer_traj[:,0], self.trailer_traj[:,1], "r--o", markersize=2);
+			ax.plot(self.car_traj[i,0], self.car_traj[i,1],"cx", markersize=10);
 			# Plot a the hitch
-			hitch = np.array([self.car_traj[i,0], self.car_traj[i,1]]) - self.ego_to_hitch*np.array([np.cos(self.car_traj[i, 2]), np.sin(self.car_traj[i, 2])])
-			ax.plot([self.car_traj[i, 0], hitch[0], self.trailer_traj[i, 0]],
-					[self.car_traj[i, 1], hitch[1], self.trailer_traj[i, 1]],
-					'--o', color="magenta", label="hitch", markersize=3)
+			ax.plot([self.car_traj[i, 0], self.hitch[i, 0], self.trailer_traj[i, 0]],
+					[self.car_traj[i, 1], self.hitch[i, 1], self.trailer_traj[i, 1]],
+					'--o', color="magenta", markersize=3)
 			# Plot obstacles
-			ax.scatter(self.occupied_pixels[:,0], self.occupied_pixels[:, 1], marker=',', color="black", label="obstacles", s=4)
-			ax.legend()
+			ax.plot(self.occupied_pixels[:,0], self.occupied_pixels[:, 1], '.', color="black", markersize=4)
+
 			ax.set_title("Single Trailer Trajectory Generation")
 			ax.set_xlabel("X (m)")
 			ax.set_ylabel("Y (m)")
+			ax.legend(['Desired Trailer Trajectory', 'Trailer Trajectory', 'Car Trajectory', 'Hitch Connection', 'Obstacles'])
 
 		# Call the animation
-		ani = FuncAnimation(fig, animate, frames=self.N, interval=200, repeat=True)
+		ani = FuncAnimation(fig, animate, frames=self.N, interval=200, repeat=False)
 
 		# Show the plot
 		plt.show()
