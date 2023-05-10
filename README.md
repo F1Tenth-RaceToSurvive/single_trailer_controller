@@ -38,12 +38,15 @@ We perfomed two experiments to test the performance of our controller.
 
 ### 1 Can Trajectory
 The first experiment involves the car avoiding a can while the trailer hits it. The figure below shows the simulation outpua and we have a video to show the real world result. \
-![Simulation Results](images/1_can_trajectory.png)
+![Simulation Results](images/1_can_trajectory.png) \
+Click on the image below to see the video:
 [![Watch the video](https://img.youtube.com/vi/rlbMi3GKpSE/maxresdefault.jpg)](https://youtu.be/rlbMi3GKpSE)
 
 ### 3 Can Trajectory
 For this experiment we placed 3 cans in the environment and the car had to avoid all of them while the trailer hit the first and third can. The figure below shows the simulation output and we have a video to show the real world result. \
-![Simulation Results](images/3_can_trajectory.png)
+![Simulation Results](images/3_can_trajectory.png) \
+Click on the image below to see the video:
+
 [![Watch the video](https://img.youtube.com/vi/oMXLErR5_nU/maxresdefault.jpg)](https://youtu.be/oMXLErR5_nU)
 ## Runing the code
 This is split into two parts. One is generating the offline optimized trajectory for the car to follow and the other is running the controller that enables the car to follow it.
