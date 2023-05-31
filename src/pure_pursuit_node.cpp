@@ -216,7 +216,7 @@ void PurePursuit::poseCallback(const nav_msgs::msg::Odometry::ConstSharedPtr pos
 
     if(closest_waypoint_idx_ == -1)
     {
-        std::cout << "ROBOT IS LOST BRUH!!!" << std::endl;
+        std::cout << "The Robot is Lost!" << std::endl;
         return;    
     }
     max_speed_ = this->get_parameter("max_speed").as_double();
